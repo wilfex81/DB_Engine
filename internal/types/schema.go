@@ -28,7 +28,7 @@ type Schema struct {
 
 func NewSchema(cols []Column) (*Schema, error) {
 	if len(cols) == 0 {
-		return nil, errors.New("types: a schema needs atleast oone column")
+		return nil, errors.New("types: a schema needs at least one column")
 	}
 	if len(cols) > MaxColumns {
 		return nil, fmt.Errorf("types: too many columns (%d, the limit is %d)", len(cols), MaxColumns)

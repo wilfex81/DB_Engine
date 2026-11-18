@@ -32,6 +32,8 @@ func (t Type) String() string {
 	return fmt.Sprintf("Type(%d)", uint8(t))
 }
 
+func (t Type) valid() bool { return t >= Int && t <= Text }
+
 // One field of a row: can be a typed value or a NULL of some type
 // Plain data that can be compared with ==
 type Value struct {

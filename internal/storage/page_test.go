@@ -358,9 +358,6 @@ func FuzzPage(f *testing.F) {
 	f.Add(newPage(f).Bytes())
 
 	f.Fuzz(func(t *testing.T, data []byte) {
-		if len(data) != PageSize {
-			return
-		}
 		var p Page
 		copy(p[:], data)
 		if p.Validate() != nil {

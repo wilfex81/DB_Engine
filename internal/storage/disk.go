@@ -28,7 +28,7 @@ type DiskManager struct {
 
 // OpenDiskManager opens the file, creating it if needed. A file whose size is
 // not a whole number of pages was cut short, so it is reported as corrupt.
-func OpenDiskManeger(path string) (*DiskManager, error) {
+func OpenDiskManager(path string) (*DiskManager, error) {
 	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0o644)
 	if err != nil {
 		return nil, err

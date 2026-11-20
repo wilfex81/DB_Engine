@@ -3,6 +3,7 @@ package index
 import (
 	"encoding/binary"
 	"fmt"
+	"sort"
 
 	"github.com/wilfex81/DB_Engine/internal/storage"
 	"github.com/wilfex81/DB_Engine/internal/table"

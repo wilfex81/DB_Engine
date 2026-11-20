@@ -81,6 +81,7 @@ func TestNewPageAndFetch(t *testing.T) {
 	assert.Equal(t, storage.PageID(1), b)
 	assert.Equal(t, []byte("zero"), read(t, bp, a))
 	assert.Equal(t, []byte("one"), read(t, bp, b))
+	assert.Equal(t, 2, bp.NumPages())
 }
 
 func TestFetchSharesTheFrame(t *testing.T) {

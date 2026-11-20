@@ -384,3 +384,42 @@ func FuzzPage(f *testing.F) {
 		}
 	})
 }
+
+
+func TestNextPageLink(t *testing.T) {
+	p := newPage(t)
+	_, ok := p.Next()
+	assert.False(t, ok)
+
+	p.SetNext(0) // page 0 is a legal target
+	id, ok := p.Next()
+	assert.True(t, ok)
+	assert.Equal(t, PageID(0), id)
+
+	mustInsert(t, p, []byte("x"))
+	p.Compact() // compaction must not touch the link
+	id, ok = p.Next()
+	assert.True(t, ok)
+	assert.Equal(t, PageID(0), id)
+
+	p.SetNext(PageID(1<<32 - 2)) // the largest page number a file can have
+	id, ok = p.Next()
+	assert.True(t, ok)
+	assert.Equal(t, PageID(1<<32-2), id)
+	assert.NoError(t, p.Validate())
+
+	p.ClearNext()
+	_, ok = p.Next()
+	assert.False(t, ok)
+
+	p.SetNext(5)
+	p.Init()
+	_, ok = p.Next()
+	assert.False(t, ok, "Init clears the link")
+}
+
+func TestNextPageFormatIsStable(t *testing.T) {
+	p := newPage(t)
+	p.SetNext(2)
+	assert.Equal(t, []byte{3, 0, 0, 0}, p[4:8]) // stored as id+1
+}

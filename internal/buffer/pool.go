@@ -227,3 +227,6 @@ func (p *Pool) flush(fid FrameID) error {
 	f.dirty = false
 	return nil
 }
+
+// NumPages is the number of pages in the file.
+func (p *Pool) NumPages() int { return p.dm.NumPages() }

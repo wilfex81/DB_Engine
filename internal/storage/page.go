@@ -246,6 +246,23 @@ func (p *Page) liveBytes() int {
 	return total
 }
 
+// Returns the page this one links to, for chains of pages such as a
+// table heap. The link is stored in header bytes 4 to 8 as  id +1, so a page
+// that was just initialized has no link, and page 0 is still a valid target
+func (p *Page) Next() (PageID, bool) {
+	v := binary.LittleEndian.Uint32(p[4:])
+	if v == 0 {
+		return 0, false
+	}
+	return PageID(v - 1), true
+}
+
+// SetNext links this page to page id.
+func (p *Page) SetNext(id PageID) { binary.LittleEndian.PutUint32(p[4:], uint32(id)+1) }
+
+// ClearNext removes the link.
+func (p *Page) ClearNext() { binary.LittleEndian.PutUint32(p[4:], 0) }
+
 func (p *Page) freeEnd() int    { return p.u16(2) }
 func (p *Page) dirEnd() int     { return headerSize + p.SlotCount()*slotSize }
 func (p *Page) contiguous() int { return p.freeEnd() - p.dirEnd() }

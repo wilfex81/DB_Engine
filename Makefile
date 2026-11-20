@@ -9,8 +9,8 @@ vendor:
 vet:
 	@go vet ./...
 
-buffer-test:
-	@go test -race -v ./internal/buffer/
+race-test:
+	@go test -race -v ./internal/storage/ ./internal/buffer/ ./internal/table/
 
 fuzz-test:
 	@go test -fuzz=FuzzPage -fuzztime=20s -fuzzminimizetime=0 ./internal/storage/   

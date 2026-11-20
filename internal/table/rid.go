@@ -14,4 +14,4 @@ type RID struct {
 	Slot uint16
 }
 
-func (r RID) String() string { return fmt.Sprintf("(%d, %d)", r.Page, r.Slot) }
+func (r RID) String() string { return fmt.Sprintf("(%d,%d)", r.Page, r.Slot) }

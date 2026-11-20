@@ -212,3 +212,20 @@ func TestConcurrentUse(t *testing.T) {
 	assert.Len(t, seen, workers*each)
 	assert.Equal(t, workers*each, dm.NumPages())
 }
+
+func TestNodePagesPassThroughTheDiskManager(t *testing.T) {
+	dm, _ := openTemp(t)
+	id := mustAlloc(t, dm)
+
+	node := nodePage(KindLeaf)
+	node[0] = 1 // one key
+	node[100] = 42
+	require.NoError(t, dm.WritePage(id, node))
+
+	var got Page
+	require.NoError(t, dm.ReadPage(id, &got))
+	assert.True(t, *node == got)
+
+	node.SetKind(Kind(9))
+	assert.ErrorIs(t, dm.WritePage(id, node), ErrCorrupt)
+}

@@ -363,6 +363,9 @@ func FuzzPage(f *testing.F) {
 		if p.Validate() != nil {
 			return // rejecting a bad page is fine
 		}
+		if p.Kind() != KindSlotted {
+			return // Validate only checks the header of a node page
+		}
 
 		before := map[int][]byte{}
 		for i := 0; i < p.SlotCount(); i++ {
@@ -384,7 +387,6 @@ func FuzzPage(f *testing.F) {
 		}
 	})
 }
-
 
 func TestNextPageLink(t *testing.T) {
 	p := newPage(t)
@@ -422,4 +424,58 @@ func TestNextPageFormatIsStable(t *testing.T) {
 	p := newPage(t)
 	p.SetNext(2)
 	assert.Equal(t, []byte{3, 0, 0, 0}, p[4:8]) // stored as id+1
+}
+
+func nodePage(k Kind) *Page {
+	p := new(Page)
+	p.SetKind(k)
+	return p
+}
+
+func TestPageKind(t *testing.T) {
+	p := newPage(t)
+	assert.Equal(t, KindSlotted, p.Kind())
+	p.SetKind(KindInternal)
+	assert.Equal(t, KindInternal, p.Kind())
+	assert.Equal(t, byte(2), p[8], "the kind is header byte 8")
+	p.Init()
+	assert.Equal(t, KindSlotted, p.Kind(), "Init makes a slotted page")
+}
+
+func TestSlottedOperationsRefuseOtherKinds(t *testing.T) {
+	p := newPage(t)
+	slot := mustInsert(t, p, []byte("a"))
+	p.SetKind(KindLeaf)
+
+	_, err := p.Insert([]byte("b"))
+	assert.ErrorIs(t, err, ErrWrongKind)
+	_, err = p.Get(slot)
+	assert.ErrorIs(t, err, ErrWrongKind)
+	assert.ErrorIs(t, p.Update(slot, []byte("c")), ErrWrongKind)
+	assert.ErrorIs(t, p.Delete(slot), ErrWrongKind)
+}
+
+func TestValidateByKind(t *testing.T) {
+	tests := []struct {
+		name    string
+		page    func() *Page
+		wantErr bool
+	}{
+		{"slotted", func() *Page { return newPage(t) }, false},
+		{"leaf", func() *Page { return nodePage(KindLeaf) }, false},
+		{"internal", func() *Page { return nodePage(KindInternal) }, false},
+		{"unknown kind", func() *Page { return nodePage(Kind(3)) }, true},
+		{"node with a free end", func() *Page { p := nodePage(KindLeaf); p.putU16(2, 7); return p }, true},
+		{"node with the unused byte set", func() *Page { p := nodePage(KindLeaf); p[9] = 1; return p }, true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.page().Validate()
+			if tc.wantErr {
+				assert.ErrorIs(t, err, ErrCorrupt)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }

@@ -11,12 +11,15 @@ import (
 
 const (
 	PageSize   = 4096
-	headerSize = 16 // slot count (2), free end (2), 12 bytes reserved (the WAL will use them)
+	headerSize = 16 // see the Page comment
 	slotSize   = 4  // tuple offset (2), tuple length (2)
 
 	// MaxTupleSize is the largest tuple one page can hold: a page with one slot.
 	MaxTupleSize = PageSize - headerSize - slotSize
 )
+
+// HeaderSize is the size of the header that every kind of page starts with.
+const HeaderSize = headerSize
 
 var (
 	ErrNoSpace       = errors.New("storage: not enough room in the page")
@@ -25,16 +28,39 @@ var (
 	ErrInvalidSlot   = errors.New("storage: slot numbers out of range")
 	ErrSlotEmpty     = errors.New("storage: slot holds no tuples")
 	ErrCorrupt       = errors.New("storage: corrupt storage")
+	ErrWrongKind     = errors.New("storage: wrong page kind for this operation")
 )
 
-// Page is one 4 KiB block. It knows nothing about schemas: it stores byte
-// strings and hands out slot numbers. A zero Page is not usable until Init
-// is called, and a page read from disk must pass Validate before any other use.
+// Page is one 4 KiB block. A zero Page is not usable until Init is called,
+// and a page read from disk must pass Validate before any other use.
 //
-// Header:  [0:2] slot count, [2:4] free end, [4:16] reserved.
-// Slot i:  at 16+4*i, offset then length. A deleted slot has offset 0 and
-// length 0. Offset 0 is inside the header, so no tuple can start there.
+// Header, the same for every kind of page:
+//
+//	[0:2]    slot count (slotted pages) or key count (node pages)
+//	[2:4]    free end (slotted pages), unused and zero in node pages
+//	[4:8]    next page link, see Next
+//	[8]      page kind
+//	[9]      unused
+//	[10:16]  reserved for the 48 bit page LSN, used by the WAL
+//
+// A slotted page (KindSlotted) stores byte strings. Slot i is at 16+4*i, offset
+// then length. A deleted slot has offset 0 and length 0. Offset 0 is inside
+// the header, so no tuple can start there. Insert, Get, Update and Delete
+// return ErrWrongKind on any other kind. Node pages are laid out by the index
+// package.
 type Page [PageSize]byte
+
+// Kind says how the rest of a page is laid out.
+type Kind uint8
+
+const (
+	KindSlotted  Kind = 0 // tuples and a slot directory
+	KindLeaf     Kind = 1 // B+ tree leaf
+	KindInternal Kind = 2 // B+ tree internal node
+)
+
+func (p *Page) Kind() Kind     { return Kind(p[8]) }
+func (p *Page) SetKind(k Kind) { p[8] = byte(k) }
 
 // Init makes p an empty page.
 func (p *Page) Init() {
@@ -64,6 +90,9 @@ func (p *Page) FreeSpace() int {
 // reused when there is one. If the free space is split into pieces, the page
 // is compacted first. On error the page is unchanged.
 func (p *Page) Insert(data []byte) (int, error) {
+	if p.Kind() != KindSlotted {
+		return 0, ErrWrongKind
+	}
 	if err := checkLen(len(data)); err != nil {
 		return 0, err
 	}
@@ -158,10 +187,10 @@ func (p *Page) Compact() {
 	p.putU16(2, end)
 }
 
-// Validate checks that a page is well formed. It trusts nothing, because the
+// validateSlotted checks that a page is well formed. It trusts nothing, because the
 // bytes may come from a damaged disk. After it passes, no operation on the
 // page can read outside it.
-func (p *Page) Validate() error {
+func (p *Page) validateSlotted() error {
 	n := p.SlotCount()
 	dirEnd := headerSize + n*slotSize
 	fe := p.freeEnd()
@@ -196,6 +225,25 @@ func (p *Page) Validate() error {
 	return nil
 }
 
+// Validate checks that a page is well formed for its kind. It trusts nothing,
+// because the bytes may come from a damaged disk. A slotted page is checked
+// completely: after it passes, no slotted operation can read outside it. Node
+// pages are laid out by the index package, so only the shared header is
+// checked here: the kind must be known, and the header bytes a node does not
+// use must be zero. The index package checks the rest.
+func (p *Page) Validate() error {
+	switch p.Kind() {
+	case KindSlotted:
+		return p.validateSlotted()
+	case KindLeaf, KindInternal:
+		if p[2] != 0 || p[3] != 0 || p[9] != 0 {
+			return fmt.Errorf("%w: node page has unused header bytes set", ErrCorrupt)
+		}
+		return nil
+	}
+	return fmt.Errorf("%w: unknown page kind %d", ErrCorrupt, p.Kind())
+}
+
 func checkLen(n int) error {
 	switch {
 	case n == 0:
@@ -208,6 +256,9 @@ func checkLen(n int) error {
 
 // returns where the tuple in a slot is.
 func (p *Page) live(slot int) (off, n int, err error) {
+	if p.Kind() != KindSlotted {
+		return 0, 0, ErrWrongKind
+	}
 	if slot < 0 || slot >= p.SlotCount() {
 		return 0, 0, fmt.Errorf("%w: %d", ErrInvalidSlot, slot)
 	}

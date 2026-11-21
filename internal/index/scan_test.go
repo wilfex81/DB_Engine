@@ -83,7 +83,7 @@ func TestRangeBounds(t *testing.T) {
 		})
 	}
 
-	assert.Equal(t, []int64{90, 92, 94, 96, 98}, collect(t, e.tr.Seek(90)))
+	assert.Equal(t, []int64{90, 92, 94, 96, 98}, collect(t, e.tr.ScanFrom(90)))
 	assert.Equal(t, evens(100), collect(t, e.tr.Scan()))
 	assertNoPins(t, e.pool)
 }

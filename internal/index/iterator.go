@@ -36,8 +36,8 @@ type Iterator struct {
 // Range returns the key from lo to hi, both included.
 func (t *Tree) Range(lo, hi int64) *Iterator { return &Iterator{t: t, lo: lo, hi: hi} }
 
-// Seek returns every key from lo upwards
-func (t *Tree) Seek(lo int64) *Iterator { return t.Range(lo, math.MaxInt64) }
+// ScanFrom returns every key from lo upwards.
+func (t *Tree) ScanFrom(lo int64) *Iterator { return t.Range(lo, math.MaxInt64) }
 
 // Scan returns every key.
 func (t *Tree) Scan() *Iterator { return t.Range(math.MinInt64, math.MaxInt64) }

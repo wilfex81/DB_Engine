@@ -15,6 +15,9 @@ import (
 // returned by Insert when the key is already in the tree
 var ErrDuplicateKey = errors.New("index: duplicate key")
 
+// ErrKeyNotFound is returned by Delete when the key is not in the tree.
+var ErrKeyNotFound = errors.New("index: key not found")
+
 // an internal signal that a leaf is full. It is never returned
 var errSplit = errors.New("index: leaf is full")
 
@@ -288,6 +291,31 @@ func (t *Tree) Insert(k int64, r table.RID) error {
 		used++
 	}
 	return t.newRoot(fresh[used], t.root, sep, right)
+}
+
+// Delete removes key k. Nodes ate never merged: a leaf may become empty, and
+// it stays where it is.Search and scans cope with that, and the space is
+// reused by later inserts into the same key range.
+func (t *Tree) Delete(k int64) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	_, leafID, err := t.descend(k)
+	if err != nil {
+		return err
+	}
+	return t.modify(leafID, func(p *storage.Page) error {
+		l, err := asLeaf(p)
+		if err != nil {
+			return err
+		}
+		i, ok := l.search(k)
+		if !ok {
+			return ErrKeyNotFound
+		}
+		l.removeAt(i)
+		return nil
+	})
 }
 
 // splitLeaf splits a full leaf while adding (k, r). The lower half stays, the

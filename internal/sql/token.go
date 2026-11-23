@@ -133,6 +133,6 @@ type SyntaxError struct {
 
 func (e *SyntaxError) Error() string { return fmt.Sprintf("syntax error at %s: %s", e.Pos, e.Msg) }
 
-func syntxErrorf(p Pos, format string, args ...any) error {
+func syntaxErrorf(p Pos, format string, args ...any) error {
 	return &SyntaxError{Pos: p, Msg: fmt.Sprintf(format, args...)}
 }

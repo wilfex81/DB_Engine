@@ -108,7 +108,7 @@ func (l *lexer) next() error {
 		return nil
 	}
 	r, _ := utf8.DecodeRuneInString(l.src[l.i:])
-	return syntaxErrorf(start, "Unexpected character %q", r)
+	return syntaxErrorf(start, "unexpected character %q", r)
 }
 
 func (l *lexer) op(k Kind, n int, start Pos) {

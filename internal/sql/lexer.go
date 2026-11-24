@@ -5,20 +5,11 @@ import (
 	"unicode/utf8"
 )
 
-type lexer struct {
-	src      string
-	i        int // the next byte read
-	toks     []Token
-	line     int // the line of the byte at i, from 1
-	cacheOff int // a byte offset on the current line whose column is known
-	cacheCol int // and thay column, so a column never needs rescan of the line
-}
-
-// Lex splits src into tokens. The last token is always EOF
+// Lex splits src into tokens. The last token is always EOF.
 //
-// Names are ASCII: a letter or underscore, then letters, digits, and
+// Names are ASCII: a letter or underscore, then letters, digits and
 // underscores, which is exactly what the catalog accepts. Words are keywords
-// in any case. A -- starts a comment that runs to the end of the line
+// in any case. A -- starts a comment that runs to the end of the line.
 func Lex(src string) ([]Token, error) {
 	l := &lexer{src: src, line: 1, cacheCol: 1}
 	for {
@@ -31,7 +22,16 @@ func Lex(src string) ([]Token, error) {
 			return nil, err
 		}
 	}
+}
 
+type lexer struct {
+	src  string
+	i    int // the next byte to read
+	toks []Token
+
+	line     int // the line of the byte at i, from 1
+	cacheOff int // a byte offset on the current line whose column is known
+	cacheCol int // and that column, so a column never needs a rescan of the line
 }
 
 // pos is the position of the byte at i. i only moves forward, which is what
@@ -42,7 +42,7 @@ func (l *lexer) pos() Pos {
 	return Pos{Offset: l.i, Line: l.line, Col: col}
 }
 
-// neline records that the byte at index at is a line feed
+// newline records that the byte at index at is a line feed.
 func (l *lexer) newline(at int) {
 	l.line++
 	l.cacheOff, l.cacheCol = at+1, 1
@@ -86,7 +86,7 @@ func (l *lexer) next() error {
 	start := l.pos()
 	c := l.src[l.i]
 	switch {
-	case isLetter(c) || c == '-':
+	case isLetter(c) || c == '_':
 		l.ident(start)
 		return nil
 	case isDigit(c):
@@ -124,16 +124,16 @@ func (l *lexer) ident(start Pos) {
 	}
 	text := src[l.i:j]
 	kind := Ident
-	if kw, ok := keyword[strings.ToUpper(text)]; ok {
+	if kw, ok := keywords[strings.ToUpper(text)]; ok {
 		kind = kw
 	}
 	l.emit(kind, text, start)
 	l.i = j
 }
 
-// number reads digits, an optional fraction ( a dot with digits after it), and
-// an optional exponent. A number may not run stright into a letter, so 12abc
-// is an error and not a number followed by a name
+// number reads digits, an optional fraction (a dot with digits after it), and
+// an optional exponent. A number may not run straight into a letter, so 12abc
+// is an error and not a number followed by a name.
 func (l *lexer) number(start Pos) error {
 	src, n := l.src, len(l.src)
 	j := l.i
@@ -156,7 +156,7 @@ func (l *lexer) number(start Pos) error {
 		if k >= n || !isDigit(src[k]) {
 			return l.malformed(start, j)
 		}
-		if k < n && isDigit(src[k]) {
+		for k < n && isDigit(src[k]) {
 			k++
 		}
 		kind, j = FloatLit, k

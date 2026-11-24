@@ -99,7 +99,7 @@ func (k Kind) String() string {
 func (k Kind) IsKeyword() bool { return k >= KwSelect && k <= KwGroup }
 
 // keywords maps na upper case word to its kind
-var keyword = func() map[string]Kind {
+var keywords = func() map[string]Kind {
 	m := make(map[string]Kind)
 	for k := KwSelect; k <= KwGroup; k++ {
 		m[kindNames[k]] = k

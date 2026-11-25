@@ -6,7 +6,7 @@ import (
 )
 
 // ParseScript parses any number of statements separated by semicolons. Empty
-// statements are skipped, and the last semicolon is optional
+// statements are skipped, and the last semicolon is optional.
 func ParseScript(src string) ([]Stmt, error) {
 	p, err := newParser(src)
 	if err != nil {
@@ -73,7 +73,7 @@ func (p *parser) parseStmt() (Stmt, error) {
 	return nil, syntaxErrorf(t.Pos, "expected a statement (SELECT, INSERT, UPDATE, DELETE, CREATE or DROP), found %s", describe(t))
 }
 
-// name reads a table, column, index or alias name
+// name reads a table, column, index or alias name.
 func (p *parser) name(what string) (Token, error) {
 	t := p.peek()
 	if t.Kind != Ident {
@@ -82,7 +82,7 @@ func (p *parser) name(what string) (Token, error) {
 	return p.advance(), nil
 }
 
-// peekAt looks n tokens ahead.Past the end it gives EOF.
+// peekAt looks n tokens ahead. Past the end it gives EOF.
 func (p *parser) peekAt(n int) Token {
 	if i := p.i + n; i < len(p.toks) {
 		return p.toks[i]
@@ -153,11 +153,11 @@ var typeNames = map[string]ColumnType{
 }
 
 // Type names are ordinary names that mean something only here, so a column
-// may still be called text or int
+// may still be called text or int.
 func (p *parser) parseColumnType() (ColumnType, error) {
 	t := p.peek()
 	if t.Kind != Ident {
-		return 0, syntaxErrorf(t.Pos, "epected a type (INT, FLOAT, BOOL or TEXT), found %s", describe(t))
+		return 0, syntaxErrorf(t.Pos, "expected a type (INT, FLOAT, BOOL or TEXT), found %s", describe(t))
 	}
 	ct, ok := typeNames[strings.ToUpper(t.Text)]
 	if !ok {
@@ -370,6 +370,7 @@ func (p *parser) parseDelete() (Stmt, error) {
 }
 
 // ---- SELECT
+
 func (p *parser) parseSelect() (Stmt, error) {
 	kw := p.advance()
 	s := &Select{stmt: stmt{kw.Pos}}
@@ -385,6 +386,7 @@ func (p *parser) parseSelect() (Stmt, error) {
 		}
 		p.advance()
 	}
+
 	if p.peek().Kind == KwFrom {
 		p.advance()
 		ref, err := p.parseTableRef()
@@ -462,7 +464,7 @@ func (p *parser) parseSelect() (Stmt, error) {
 		p.advance()
 		n, err := strconv.ParseInt(t.Text, 10, 64)
 		if err != nil {
-			return nil, syntaxErrorf(t.Pos, "the interger %s is out of range", t.Text)
+			return nil, syntaxErrorf(t.Pos, "the integer %s is out of range", t.Text)
 		}
 		s.Limit = &n
 	}
@@ -470,8 +472,8 @@ func (p *parser) parseSelect() (Stmt, error) {
 }
 
 // parseSelectItem reads *, t.*, or an expression with an optional alias. An
-// alias my be written without AS, because every keyword is reserved and a
-// plain name after an expression can only be na alias.
+// alias may be written without AS, because every keyword is reserved and a
+// plain name after an expression can only be an alias.
 func (p *parser) parseSelectItem() (SelectItem, error) {
 	t := p.peek()
 	if t.Kind == Star {
@@ -484,6 +486,7 @@ func (p *parser) parseSelectItem() (SelectItem, error) {
 		p.advance()
 		return SelectItem{At: t.Pos, TableStar: t.Text}, nil
 	}
+
 	e, err := p.parseExpr()
 	if err != nil {
 		return SelectItem{}, err
@@ -524,7 +527,7 @@ func (p *parser) parseTableRef() (TableRef, error) {
 }
 
 // parseJoin reads [INNER] JOIN table ON expr. It returns false, with no
-// error when the next token does not start a join
+// error, when the next token does not start a join.
 func (p *parser) parseJoin() (Join, bool, error) {
 	switch t := p.peek(); t.Kind {
 	case Comma:
@@ -552,5 +555,4 @@ func (p *parser) parseJoin() (Join, bool, error) {
 		return Join{}, false, err
 	}
 	return Join{At: join.Pos, Table: ref, On: on}, true, nil
-
 }

@@ -127,7 +127,7 @@ func (p *parser) parseCreateTable(create Token) (Stmt, error) {
 	if _, err := p.expect(LParen); err != nil {
 		return nil, err
 	}
-	s := &CreateTable{stmt: stmt{create.Pos}, Name: name.Text}
+	s := &CreateTable{stmt: stmt{create.Pos}, Name: name.Text, NameAt: name.Pos}
 	for {
 		col, err := p.parseColumnDef()
 		if err != nil {
@@ -231,7 +231,8 @@ func (p *parser) parseCreateIndex(create Token) (Stmt, error) {
 	if _, err := p.expect(RParen); err != nil {
 		return nil, err
 	}
-	return &CreateIndex{stmt: stmt{create.Pos}, Name: name.Text, Table: table.Text, Column: col.Text}, nil
+	return &CreateIndex{stmt: stmt{create.Pos}, Name: name.Text, Table: table.Text, Column: col.Text,
+		NameAt: name.Pos, TableAt: table.Pos, ColumnAt: col.Pos}, nil
 }
 
 func (p *parser) parseDrop() (Stmt, error) {
@@ -243,14 +244,14 @@ func (p *parser) parseDrop() (Stmt, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &DropTable{stmt: stmt{drop.Pos}, Name: name.Text}, nil
+		return &DropTable{stmt: stmt{drop.Pos}, Name: name.Text, NameAt: name.Pos}, nil
 	case KwIndex:
 		p.advance()
 		name, err := p.name("an index name")
 		if err != nil {
 			return nil, err
 		}
-		return &DropIndex{stmt: stmt{drop.Pos}, Name: name.Text}, nil
+		return &DropIndex{stmt: stmt{drop.Pos}, Name: name.Text, NameAt: name.Pos}, nil
 	default:
 		return nil, syntaxErrorf(t.Pos, "expected TABLE or INDEX after DROP, found %s", describe(t))
 	}
@@ -267,7 +268,7 @@ func (p *parser) parseInsert() (Stmt, error) {
 	if err != nil {
 		return nil, err
 	}
-	s := &Insert{stmt: stmt{kw.Pos}, Table: table.Text}
+	s := &Insert{stmt: stmt{kw.Pos}, Table: table.Text, TableAt: table.Pos}
 
 	if p.peek().Kind == LParen {
 		p.advance()
@@ -277,6 +278,7 @@ func (p *parser) parseInsert() (Stmt, error) {
 				return nil, err
 			}
 			s.Columns = append(s.Columns, c.Text)
+			s.ColumnAts = append(s.ColumnAts, c.Pos)
 			if p.peek().Kind != Comma {
 				break
 			}
@@ -328,7 +330,7 @@ func (p *parser) parseUpdate() (Stmt, error) {
 	if _, err := p.expect(KwSet); err != nil {
 		return nil, err
 	}
-	s := &Update{stmt: stmt{kw.Pos}, Table: table.Text}
+	s := &Update{stmt: stmt{kw.Pos}, Table: table.Text, TableAt: table.Pos}
 	for {
 		col, err := p.name("a column name")
 		if err != nil {
@@ -362,7 +364,7 @@ func (p *parser) parseDelete() (Stmt, error) {
 	if err != nil {
 		return nil, err
 	}
-	s := &Delete{stmt: stmt{kw.Pos}, Table: table.Text}
+	s := &Delete{stmt: stmt{kw.Pos}, Table: table.Text, TableAt: table.Pos}
 	if s.Where, err = p.parseWhere(); err != nil {
 		return nil, err
 	}

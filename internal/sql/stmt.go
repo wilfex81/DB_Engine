@@ -57,23 +57,27 @@ type ColumnDef struct {
 type CreateTable struct {
 	stmt
 	Name    string
+	NameAt  Pos
 	Columns []ColumnDef
 }
 
 type DropTable struct {
 	stmt
-	Name string
+	Name   string
+	NameAt Pos
 }
 
 // CreateIndex is CREATE UNIQUE INDEX. Every index is unique, so there is no flag.
 type CreateIndex struct {
 	stmt
-	Name, Table, Column string
+	Name, Table, Column       string
+	NameAt, TableAt, ColumnAt Pos
 }
 
 type DropIndex struct {
 	stmt
-	Name string
+	Name   string
+	NameAt Pos
 }
 
 // InsertRow is one parenthesized row of VALUES.
@@ -84,9 +88,11 @@ type InsertRow struct {
 
 type Insert struct {
 	stmt
-	Table   string
-	Columns []string // nil when the statement has no column list
-	Rows    []InsertRow
+	Table     string
+	TableAt   Pos
+	Columns   []string // nil when the statement has no column list
+	ColumnAts []Pos    // the position of each listed column
+	Rows      []InsertRow
 }
 
 // SelectItem is one output of SELECT: *, t.*, or an expression with an optional alias.
@@ -134,15 +140,16 @@ type Assignment struct {
 
 type Update struct {
 	stmt
-	Table string
-	Set   []Assignment
-	Where Expr
+	Table   string
+	TableAt Pos
+	Set     []Assignment
+	Where   Expr
 }
-
 type Delete struct {
 	stmt
-	Table string
-	Where Expr
+	Table   string
+	TableAt Pos
+	Where   Expr
 }
 
 func (d ColumnDef) String() string {
@@ -164,8 +171,8 @@ func (s *CreateTable) String() string {
 	return "CREATE TABLE " + s.Name + " (" + strings.Join(defs, ", ") + ")"
 }
 
-func (s *DropTable) String() string   { return "DROP TABLE " + s.Name }
-func (s *DropIndex) String() string   { return "DROP INDEX " + s.Name }
+func (s *DropTable) String() string { return "DROP TABLE " + s.Name }
+func (s *DropIndex) String() string { return "DROP INDEX " + s.Name }
 func (s *CreateIndex) String() string {
 	return "CREATE UNIQUE INDEX " + s.Name + " ON " + s.Table + " (" + s.Column + ")"
 }

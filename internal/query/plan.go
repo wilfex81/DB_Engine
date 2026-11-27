@@ -9,7 +9,7 @@ import (
 	"github.com/wilfex81/DB_Engine/internal/types"
 )
 
-// NewCatalog lets the binder look at the real catalog
+// NewCatalog lets the binder look at the real catalog.
 func NewCatalog(c *catalog.Catalog) Catalog { return catalogView{c} }
 
 type catalogView struct{ c *catalog.Catalog }
@@ -27,19 +27,19 @@ func (v catalogView) HasIndex(name string) bool {
 	return ok
 }
 
-// Plan is a SELECT ready to run: read rows from Root unitl it says there are no more.
+// Plan is a SELECT ready to run: read rows from Root until it says there are no more.
 type Plan struct {
 	Root    Operator
 	Columns []Column
 }
 
-// Rows run the plan to the end.
+// Rows runs the plan to the end.
 func (p *Plan) Rows() ([][]types.Value, error) { return Drain(p.Root) }
 
 // PlanOption changes how a plan is made.
 type PlanOption func(*planner)
 
-// WithoutIndexes makes every plan read whole tables. The results must no
+// WithoutIndexes makes every plan read whole tables. The results must not
 // change, so tests use it to check the plans that do use indexes.
 func WithoutIndexes() PlanOption { return func(p *planner) { p.useIndexes = false } }
 
@@ -96,8 +96,8 @@ func PlanSelect(cat *catalog.Catalog, sel *Select, opts ...PlanOption) (*Plan, e
 	return &Plan{Root: &Project{child: root, exprs: exprs}, Columns: cols}, nil
 }
 
-// sortedBy reports whether rows that come sorted ascending by colums pos
-// already stisfy the ORDER BY.
+// sortedBy reports whether rows that come sorted ascending by column pos
+// already satisfy the ORDER BY.
 func sortedBy(order []OrderItem, pos int) bool {
 	if pos < 0 || len(order) != 1 || order[0].Desc {
 		return false
@@ -106,12 +106,13 @@ func sortedBy(order []OrderItem, pos int) bool {
 	return ok && ref.Pos == pos
 }
 
-// access chooses how to read the table. It retunrs the source, the parts of
+// access chooses how to read the table. It returns the source, the parts of
 // WHERE that are still left to check, and the column the source is sorted by.
 func (p *planner) access(t *catalog.Table, conjuncts []Expr, sel *Select) (Operator, []Expr, int) {
 	if !p.useIndexes {
 		return &SeqScan{tableName: t.Name, it: t.Heap.Scan()}, conjuncts, -1
 	}
+
 	var best *candidate
 	for _, ix := range t.Indexes() { // sorted by name
 		if c := newCandidate(ix, conjuncts); c != nil && (best == nil || c.score() > best.score()) {
@@ -129,8 +130,8 @@ func (p *planner) access(t *catalog.Table, conjuncts []Expr, sel *Select) (Opera
 	}
 
 	// No part of WHERE helps. An ordered scan can still replace Sort and Limit,
-	// but only on a NULL column: rows with a NULL key are not in the index,
-	// and a full scan of it would loos them.
+	// but only on a NOT NULL column: rows with a NULL key are not in the index,
+	// and a full scan of it would lose them.
 	if sel.Limit != nil && len(sel.OrderBy) == 1 && !sel.OrderBy[0].Desc {
 		if ref, ok := sel.OrderBy[0].Expr.(*ColRef); ok && t.Schema.Column(ref.Pos).NotNull {
 			for _, ix := range t.Indexes() {
@@ -202,7 +203,7 @@ func newCandidate(ix *catalog.Index, conjuncts []Expr) *candidate {
 	return c
 }
 
-// bound is "column op k"
+// bound is "column op k".
 type bound struct {
 	op sql.BinaryOp
 	k  int64
@@ -262,7 +263,7 @@ func splitAnd(e Expr) []Expr {
 	if e == nil {
 		return nil
 	}
-	if b, ok := e.(*Binary); ok && b.Op == sql.OpAdd {
+	if b, ok := e.(*Binary); ok && b.Op == sql.OpAnd {
 		return append(splitAnd(b.L), splitAnd(b.R)...)
 	}
 	return []Expr{e}
@@ -275,7 +276,7 @@ func andAll(es []Expr) Expr {
 	}
 	out := es[0]
 	for _, e := range es[1:] {
-		out = &Binary{Op: sql.OpAdd, L: out, R: e, Typ: types.Bool}
+		out = &Binary{Op: sql.OpAnd, L: out, R: e, Typ: types.Bool}
 	}
 	return out
 }

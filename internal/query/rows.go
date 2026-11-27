@@ -15,9 +15,9 @@ type Row struct {
 	RID    table.RID
 }
 
-// Operator is one step of a plan. Next retursn the next row, or false when
+// Operator is one step of a plan. Next returns the next row, or false when
 // there are no more. No operator keeps a page pinned between calls, so a plan
-// that is abandoned half way leaes nothing behind and needs no Close.
+// that is abandoned half way leaves nothing behind and needs no Close.
 type Operator interface {
 	Next() (Row, bool, error)
 	// describe is one line about this step, and the steps below it.
@@ -30,7 +30,7 @@ type Column struct {
 	Type types.Type
 }
 
-// Drain runs an operator to the end and returns all of its rows.
+// Drain runs an operator to the end and returns all its rows.
 func Drain(op Operator) ([][]types.Value, error) {
 	var out [][]types.Value
 	for {
@@ -54,7 +54,7 @@ func Explain(op Operator) string {
 		if b.Len() > 0 {
 			b.WriteString("\n")
 		}
-		b.WriteString(strings.Repeat(" ", depth) + line)
+		b.WriteString(strings.Repeat("  ", depth) + line)
 		for _, k := range kids {
 			walk(k, depth+1)
 		}

@@ -13,8 +13,8 @@ import (
 	"github.com/wilfex81/DB_Engine/internal/types"
 )
 
-// Dual produces excatly one row with no columns. It is the source of
-// SELECT that has no FROM
+// Dual produces exactly one row with no columns. It is the source of a
+// SELECT that has no FROM.
 type Dual struct{ done bool }
 
 func (d *Dual) Next() (Row, bool, error) {
@@ -27,7 +27,7 @@ func (d *Dual) Next() (Row, bool, error) {
 
 func (d *Dual) describe() (string, []Operator) { return "Dual", nil }
 
-// SeqScan reads every row of a table, in order the heap holds them.
+// SeqScan reads every row of a table, in the order the heap holds them.
 type SeqScan struct {
 	tableName string
 	it        *table.Iterator
@@ -40,7 +40,7 @@ func (s *SeqScan) Next() (Row, bool, error) {
 	return Row{Values: s.it.Values(), RID: s.it.RID()}, true, nil
 }
 
-func (s *SeqScan) describe() (string, []Operator) { return "SeqScan" + s.tableName, nil }
+func (s *SeqScan) describe() (string, []Operator) { return "SeqScan " + s.tableName, nil }
 
 // IndexScan walks the keys lo to hi of an index in ascending order, and reads
 // the row of each key from the heap. lo == hi is a lookup of one key.
@@ -110,7 +110,7 @@ func (f *Filter) describe() (string, []Operator) {
 
 // Sort reads every row of its child into memory on the first call, sorts
 // them, and hands them out. The sort is stable, so rows with equal keys keep
-// the order they cam in. Null counts as larger than any value, so it comes
+// the order they came in. NULL counts as larger than any value, so it comes
 // last in ascending order and first in descending order, as in PostgreSQL.
 type Sort struct {
 	child  Operator
@@ -195,7 +195,7 @@ func (s *Sort) describe() (string, []Operator) {
 	return "Sort " + strings.Join(parts, ", "), []Operator{s.child}
 }
 
-// Limit stops after n rows. With n = 0 it never asks it child for anything
+// Limit stops after n rows. With n = 0 it never asks its child for anything.
 type Limit struct {
 	child Operator
 	n     int64

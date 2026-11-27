@@ -175,7 +175,7 @@ func evalCompare(e *Binary, l, r types.Value) (types.Value, error) {
 	if l.Type() != r.Type() {
 		return types.Value{}, fmt.Errorf("query: internal error: comparing %s with %s", l.Type(), r.Type())
 	}
-	var c int
+	c := compareNonNull(l, r)
 	switch l.Type() {
 	case types.Int:
 		c = cmp(l.Int(), r.Int())
@@ -202,6 +202,22 @@ func evalCompare(e *Binary, l, r types.Value) (types.Value, error) {
 		ok = c >= 0
 	}
 	return types.NewBool(ok), nil
+}
+
+// compareNonNull orders two values of the same type, neither of them NULL:
+// -1, 0 or 1. Text compares byte by byte, and FALSE is smaller than TRUE.
+func compareNonNull(l, r types.Value) int {
+	switch l.Type() {
+	case types.Int:
+		return cmp(l.Int(), r.Int())
+	case types.Float:
+		return cmp(l.Float(), r.Float())
+	case types.Text:
+		return strings.Compare(l.Text(), r.Text())
+	case types.Bool:
+		return cmp(b2i(l.Bool()), b2i(r.Bool()))
+	}
+	return 0
 }
 
 func cmp[T int | int64 | float64](a, b T) int {

@@ -18,15 +18,15 @@ var ErrUniqueViolation = errors.New("query: unique index violation")
 // before the first write, so a test can make a write fail.
 var beforeWriteHook func()
 
-// These functions do not lock anything . The caller must make sure that no
-// other statement changes the same table at the same time
+// These functions do not lock anything. The caller must make sure that no
+// other statement changes the same tables at the same time.
 
 // ExecInsert adds the rows of a bound INSERT and returns how many.
 //
 // Every row is built and checked before the first one is written: the values
 // are computed, NOT NULL and size are checked, and every key is looked up in
 // every unique index. If a write fails anyway, the rows already written are
-// take out again.
+// taken out again.
 func ExecInsert(cat *catalog.Catalog, s *Insert) (int64, error) {
 	t, ok := cat.Table(s.Table)
 	if !ok {
@@ -52,12 +52,13 @@ func ExecInsert(cat *catalog.Catalog, s *Insert) (int64, error) {
 		}
 		rows[i] = row
 	}
+
 	for _, ix := range indexes {
-		seen := map[int64]int{} // Key -> number of the row that has it
+		seen := map[int64]int{} // key -> number of the row that has it
 		for i, row := range rows {
 			v := row[ix.ColumnPos]
 			if v.IsNull() {
-				continue // row with a NULL keya re not in the index
+				continue // rows with a NULL key are not in the index
 			}
 			k := v.Int()
 			if prev, dup := seen[k]; dup {
@@ -90,13 +91,14 @@ func ExecInsert(cat *catalog.Catalog, s *Insert) (int64, error) {
 		if extra.rid != (table.RID{}) || len(extra.keys) > 0 {
 			_ = t.Heap.Delete(extra.rid)
 		}
-		for i := len(done) - 1; 1 >= 0; i-- {
+		for i := len(done) - 1; i >= 0; i-- {
 			for _, k := range done[i].keys {
 				_ = k.ix.Tree.Delete(k.key)
 			}
 			_ = t.Heap.Delete(done[i].rid)
 		}
 	}
+
 	for _, row := range rows {
 		rid, err := t.Heap.Insert(row)
 		if err != nil {
@@ -189,7 +191,7 @@ func collectRows(t *catalog.Table, where Expr, opts []PlanOption) ([]victim, err
 func ExecDelete(cat *catalog.Catalog, s *Delete, opts ...PlanOption) (int64, error) {
 	t, ok := cat.Table(s.Table)
 	if !ok {
-		return 0, fmt.Errorf("query: table %q does not exists", s.Table)
+		return 0, fmt.Errorf("query: table %q does not exist", s.Table)
 	}
 	victims, err := collectRows(t, s.Where, opts)
 	if err != nil {
